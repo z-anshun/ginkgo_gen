@@ -22,7 +22,7 @@ var funcMap = template.FuncMap{
 				param = "[]" + v.TypeName + "{" + strings.ToLower(string(v.Name[0][0])) + v.Name[0][1:] + "}"
 			}
 			if k == len(params)-1 {
-				res += "With" + v.Name[0] + "(" + param + ")\n"
+				res += "With" + v.Name[0] + "(" + param + ")"
 			} else {
 				res += "With" + v.Name[0] + "(" + param + ").\n"
 			}
@@ -56,13 +56,18 @@ import (
 //go:generate ginkgo --focus={{.Describe}}
 var _ = Describe("{{.Describe}}", func() {
 	client := tools.Client{Client: tools.NewClient(nil, tools.Cfg)}
-
+	
 	//TODO: var param
 	{{ initParam .Fs}}
+
+	defaultParams :=func() *{{.Pkg}}_client.{{.Name}}Params{
+		return {{.Pkg}}_client.New{{.Name}}Params().
+		{{ join .Fs}}
+	}
+
 {{range $idx,$val := .Contexts}}
 	Context("{{inc $idx}}. {{$val.Context}}", func() {	
-		params := {{$.Pkg}}_client.New{{$.Name}}Params().
-		{{ join $.Fs}}
+		params := defaultParams()
 		resp, err := client.Client.{{$.Service}}.{{$.Name}}(params, tools.GenAuthClientOption())
 		if err != nil {
 			klog.Errorln("{{$.Name}} error:", err)
