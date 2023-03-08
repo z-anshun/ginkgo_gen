@@ -93,7 +93,7 @@ func (p *FileMd) selectCase(rows []string) {
 	var desc []string
 	for i := 1; i < len(rows); i++ {
 		row := strings.Split(strings.ReplaceAll(rows[i], " ", ""), "|")
-		if len(row[p.headerIdx]) != 0 {
+		if len(row) > p.headerIdx && len(row[p.headerIdx]) != 0 {
 			desc = append(desc, row[p.headerIdx])
 		}
 	}

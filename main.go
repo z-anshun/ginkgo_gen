@@ -166,9 +166,7 @@ func genContent(ms []model.Model) {
 		if err != nil {
 			panic(err)
 		}
-		r1 := strings.ReplaceAll(buf.String(), "&#34;&#34", "\"\"")
-		r2 := strings.ReplaceAll(r1, "&amp;", "&")
-		source, err := format.Source([]byte(r2))
+		source, err := format.Source([]byte(replaceSome(buf.String())))
 		if err != nil {
 			log.Println("format fail:", err)
 			return
@@ -176,7 +174,7 @@ func genContent(ms []model.Model) {
 		dir := outPath
 		if len(outPath) == 0 {
 			modelFileDir := strings.Split(fileName, "/")
-			dir = filepath.Join(modelFileDir[:len(dir)-1]...)
+			dir = filepath.Join(modelFileDir[:len(modelFileDir)-1]...)
 		}
 		f, err := os.OpenFile(dir+"/"+strings.ToLower(v.Name+".go"), os.O_WRONLY|os.O_CREATE|os.O_TRUNC, os.ModePerm)
 		if err != nil {
@@ -184,4 +182,11 @@ func genContent(ms []model.Model) {
 		}
 		f.Write(source)
 	}
+}
+
+func replaceSome(str string) string {
+	r1 := strings.ReplaceAll(str, "&#34;&#34", "\"\"")
+	r2 := strings.ReplaceAll(strings.ReplaceAll(r1, "&amp;", "&"), "&gt;", " > ")
+	r3 := strings.ReplaceAll(r2, "&lt;", " < ")
+	return r3
 }
