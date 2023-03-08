@@ -1,6 +1,7 @@
 package main
 
 import (
+	"ginkgo_gen/model"
 	"html/template"
 	"strings"
 )
@@ -9,16 +10,16 @@ var funcMap = template.FuncMap{
 	"inc": func(i int) int {
 		return i + 1
 	},
-	"join": func(params []Field) string {
+	"join": func(params []model.Field) string {
 		res := ``
 		for k, v := range params {
 			param := ""
 			switch v.Type {
-			case Normal:
+			case model.Normal:
 				param = strings.ToLower(string(v.Name[0][0])) + v.Name[0][1:]
-			case Pointer:
+			case model.Pointer:
 				param = `&` + strings.ToLower(string(v.Name[0][0])) + v.Name[0][1:]
-			case Array:
+			case model.Array:
 				param = "[]" + v.TypeName + "{" + strings.ToLower(string(v.Name[0][0])) + v.Name[0][1:] + "}"
 			}
 			if k == len(params)-1 {
@@ -29,7 +30,7 @@ var funcMap = template.FuncMap{
 		}
 		return res
 	},
-	"initParam": func(params []Field) string {
+	"initParam": func(params []model.Field) string {
 		res := ""
 		for _, v := range params {
 			line := strings.ToLower(string(v.Name[0][0])) + v.Name[0][1:] + ":=\"\"" + "\n"

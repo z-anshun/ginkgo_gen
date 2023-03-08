@@ -4,7 +4,6 @@ package tracing
 // 所有参数填写正确，返回正确数据
 // cluster不存在，无数据返回
 // namespace 不存在，无数据返回
-// serviceName 不存在，无数据返回
 type TracingQueryOperations struct {
 	Cluster     *string
 	ClusterName *string

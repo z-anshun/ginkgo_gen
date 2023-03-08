@@ -3,31 +3,40 @@ package main
 import (
 	"bytes"
 	"flag"
-	"fmt"
+
 	"go/ast"
 	"go/format"
 	"go/parser"
 	"go/token"
 	"html/template"
-	"log"
 	"os"
+	"path/filepath"
 	"strings"
+
+	"ginkgo_gen/model"
+	gen_parser "ginkgo_gen/parser"
+
+	log "github.com/sirupsen/logrus"
 )
 
 var (
 	fileName string
+	outPath  string
+	caseFile string
 )
 
 var parserFiles []string
 
 func init() {
 	flag.StringVar(&fileName, "f", "", "文件名")
+	flag.StringVar(&outPath, "o", "", "输出路径")
+	flag.StringVar(&caseFile, "cf", "", "对应的 case 文件路径")
 	flag.Parse()
 }
 
 func main() {
 	getwd, err := os.Getwd()
-	fmt.Println(getwd)
+
 	if err != nil {
 		panic(err)
 	}
@@ -45,28 +54,38 @@ func main() {
 	} else {
 		parserFiles = append(parserFiles, fileName)
 	}
-	fmt.Println("Will parse:", parserFiles)
+
+	log.Info("Will parser:", parserFiles)
 	fset := token.NewFileSet()
 
+	// TODO: support parser files
 	f, err := parser.ParseFile(fset, parserFiles[0], nil, parser.ParseComments)
 	if err != nil {
 		panic(err)
 	}
 
 	ms := initModel(f)
-	fmt.Println(ms)
+
+	if len(caseFile) != 0 {
+		m := gen_parser.ParseFileToContent(caseFile)
+		ms[0].Contexts = m.Contexts
+		ms[0].Describe = m.Describe
+	}
 	//ast.Print(fset, f)
 	genContent(ms)
 }
 
-func initModel(f *ast.File) (ms []Model) {
-	fmt.Println("initModel:", f.Name.String())
+func initModel(f *ast.File) (ms []model.Model) {
+	if len(caseFile) != 0 {
+
+	}
+	log.Info("initModel:", f.Name.String())
 	// 遍历类型
 	for _, decl := range f.Decls {
 		switch d := decl.(type) {
 
 		case *ast.GenDecl: // 必须为定义类型
-			var m Model // 自定义模版
+			var m model.Model // 自定义模版
 			m.Pkg = f.Name.String()
 			m.Service = strings.ToUpper(string(m.Pkg[0])) + m.Pkg[1:]
 			if d.Doc != nil {
@@ -79,7 +98,7 @@ func initModel(f *ast.File) (ms []Model) {
 						if len(s) < 2 {
 							s = strings.Split(com, "，")
 						}
-						m.Contexts = append(m.Contexts, ContextIt{
+						m.Contexts = append(m.Contexts, model.ContextIt{
 							Context: strings.Join(s[:len(s)-1], ", "),
 							It:      s[len(s)-1],
 						})
@@ -100,7 +119,7 @@ func initModel(f *ast.File) (ms []Model) {
 					continue
 				}
 				for _, field := range structType.Fields.List {
-					var modelField Field
+					var modelField model.Field
 					// 一个 filed 可能包含多个字段名
 					for _, name := range field.Names {
 						modelField.Name = append(modelField.Name, name.Name)
@@ -111,13 +130,13 @@ func initModel(f *ast.File) (ms []Model) {
 					//todo:暂时不支持嵌套
 					switch filedT := field.Type.(type) {
 					case *ast.Ident:
-						modelField.Type = Normal
+						modelField.Type = model.Normal
 						modelField.TypeName = filedT.Name
 					case *ast.StarExpr:
-						modelField.Type = Pointer
+						modelField.Type = model.Pointer
 						modelField.TypeName = filedT.X.(*ast.Ident).Name
 					case *ast.ArrayType:
-						modelField.Type = Array
+						modelField.Type = model.Array
 						modelField.TypeName = filedT.Elt.(*ast.Ident).Name
 					}
 
@@ -136,7 +155,7 @@ func initModel(f *ast.File) (ms []Model) {
 	return ms
 }
 
-func genContent(ms []Model) {
+func genContent(ms []model.Model) {
 	for _, v := range ms {
 		parse, err := template.New(v.Name).Funcs(funcMap).Parse(ginkgoTemp)
 		if err != nil {
@@ -154,8 +173,12 @@ func genContent(ms []Model) {
 			log.Println("format fail:", err)
 			return
 		}
-		dir := strings.Split(fileName, "/")
-		f, err := os.OpenFile(strings.Join(dir[:len(dir)-1], "/")+"/"+strings.ToLower(v.Name+".go"), os.O_WRONLY|os.O_CREATE|os.O_TRUNC, os.ModePerm)
+		dir := outPath
+		if len(outPath) == 0 {
+			modelFileDir := strings.Split(fileName, "/")
+			dir = filepath.Join(modelFileDir[:len(dir)-1]...)
+		}
+		f, err := os.OpenFile(dir+"/"+strings.ToLower(v.Name+".go"), os.O_WRONLY|os.O_CREATE|os.O_TRUNC, os.ModePerm)
 		if err != nil {
 			panic(err)
 		}
